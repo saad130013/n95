@@ -14,7 +14,7 @@ EXCEL_PATH = "rcrn_course_data.xlsx"
 def load_data():
     if os.path.exists(EXCEL_PATH):
         df = pd.read_excel(EXCEL_PATH)
-        df.columns = df.columns.str.strip()  # إزالة أي مسافات في الأعمدة
+        df.columns = df.columns.str.strip()
         return df
     else:
         return pd.DataFrame(columns=["NO", "Name", "MRN", "Department", "Course Notes", "Attended?", "Attendance Date"])
@@ -33,7 +33,11 @@ if search_mrn:
     results = results[df["MRN"].astype(str).str.contains(search_mrn)]
 
 st.subheader("📄 نتائج البحث")
-st.dataframe(results)
+try:
+    results_cleaned = results.astype(str)
+    st.dataframe(results_cleaned)
+except Exception as e:
+    st.error(f"حدث خطأ أثناء عرض النتائج: {e}")
 
 # تحديث حالة الحضور
 st.subheader("✅ تحديث حالة الدورة")
@@ -53,8 +57,11 @@ if not df.empty and "Name" in df.columns:
         df.to_excel(EXCEL_PATH, index=False)
         st.success("✅ تم حفظ التحديث بنجاح")
 
-# عرض قائمة غير الحاضرين
+# عرض الموظفين الذين لم يحضروا الدورة
 st.subheader("❗الموظفون الذين لم يحضروا الدورة بعد")
 if "Attended?" in df.columns:
-    missing = df[df["Attended?"] != "نعم"]
-    st.dataframe(missing)
+    try:
+        missing = df[df["Attended?"] != "نعم"]
+        st.dataframe(missing.astype(str))
+    except Exception as e:
+        st.error(f"تعذر عرض العهد غير المكتملة: {e}")
