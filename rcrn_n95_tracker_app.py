@@ -4,52 +4,48 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="متابعة دورات RCRN/N95", layout="wide")
+st.set_page_config(page_title="متابعة دورة RCRN/N95", layout="wide")
 st.title("📋 نظام متابعة الموظفين لدورة COVID-19 Vaccine & RCRN/N95")
 
-EXCEL_PATH = "rcrn_course_data.xlsx"
+EXCEL_PATH = "rcrn_n95_attendance.xlsx"
 
-# تحميل البيانات من Excel مع معالجة الأعمدة المكررة والفارغة
+# ✅ تحميل البيانات الحقيقية من الجدول في ملف Excel
 @st.cache_data
 def load_data():
     if os.path.exists(EXCEL_PATH):
-        df = pd.read_excel(EXCEL_PATH, header=7)
-        df.columns = df.columns.str.strip()
-        df = df.loc[:, ~df.columns.duplicated()]
-        df = df.rename(columns=lambda x: x if pd.notna(x) else "Unnamed")
+        df = pd.read_excel(EXCEL_PATH, skiprows=6, usecols="A:D")
+        df.columns = ["NO", "Name", "MRN", "Due Date"]
         return df
     else:
-        return pd.DataFrame(columns=["NO", "Name", "MRN", "Department", "Course Notes", "Attended?", "Attendance Date"])
+        return pd.DataFrame(columns=["NO", "Name", "MRN", "Due Date"])
 
 df = load_data()
 
-# نموذج البحث
-st.sidebar.header("🔍 البحث عن الموظف")
-search_name = st.sidebar.text_input("🔠 الاسم")
-search_mrn = st.sidebar.text_input("🔢 رقم السجل الطبي MRN")
+# 🔍 نموذج البحث
+st.sidebar.header("🔎 البحث عن الموظف")
+search_name = st.sidebar.text_input("👤 الاسم")
+search_mrn = st.sidebar.text_input("🆔 رقم السجل الطبي MRN")
 
 results = df
 if search_name:
-    results = results[df["Name"].astype(str).str.contains(search_name, case=False, na=False)]
+    results = results[results["Name"].astype(str).str.contains(search_name, case=False, na=False)]
 if search_mrn:
-    results = results[df["MRN"].astype(str).str.contains(search_mrn)]
+    results = results[results["MRN"].astype(str).str.contains(search_mrn)]
 
-st.subheader("📄 نتائج البحث")
+# عرض نتائج البحث
+st.subheader("🗂️ نتائج البحث")
 try:
-    results_cleaned = results.astype(str)
-    st.dataframe(results_cleaned)
+    st.dataframe(results.astype(str))
 except Exception as e:
     st.error(f"حدث خطأ أثناء عرض النتائج: {e}")
 
 # تحديث حالة الحضور
 st.subheader("✅ تحديث حالة الدورة")
-if not df.empty and "Name" in df.columns:
+if not df.empty:
     selected_name = st.selectbox("اختر اسم الموظف", df["Name"].dropna().unique())
-    selected_row = df[df["Name"] == selected_name].iloc[0]
-
     col1, col2 = st.columns(2)
     with col1:
-        attended = st.selectbox("هل حضر الدورة؟", ["نعم", "لا"], index=0 if selected_row.get("Attended?") == "نعم" else 1)
+        attended = st.selectbox("هل حضر الدورة؟", ["نعم", "لا"])
     with col2:
         attendance_date = st.date_input("تاريخ الحضور", value=datetime.today())
 
@@ -59,11 +55,8 @@ if not df.empty and "Name" in df.columns:
         df.to_excel(EXCEL_PATH, index=False)
         st.success("✅ تم حفظ التحديث بنجاح")
 
-# عرض الموظفين الذين لم يحضروا الدورة
+# عرض الموظفين الذين لم يحضروا
 st.subheader("❗الموظفون الذين لم يحضروا الدورة بعد")
 if "Attended?" in df.columns:
-    try:
-        missing = df[df["Attended?"] != "نعم"]
-        st.dataframe(missing.astype(str))
-    except Exception as e:
-        st.error(f"تعذر عرض العهد غير المكتملة: {e}")
+    missing = df[df["Attended?"] != "نعم"]
+    st.dataframe(missing.astype(str))
