@@ -9,12 +9,14 @@ st.title("📋 نظام متابعة الموظفين لدورة COVID-19 Vaccin
 
 EXCEL_PATH = "rcrn_course_data.xlsx"
 
-# تحميل البيانات من Excel
+# تحميل البيانات من Excel مع معالجة الأعمدة المكررة والفارغة
 @st.cache_data
 def load_data():
     if os.path.exists(EXCEL_PATH):
-        df = pd.read_excel(EXCEL_PATH)
+        df = pd.read_excel(EXCEL_PATH, header=7)
         df.columns = df.columns.str.strip()
+        df = df.loc[:, ~df.columns.duplicated()]
+        df = df.rename(columns=lambda x: x if pd.notna(x) else "Unnamed")
         return df
     else:
         return pd.DataFrame(columns=["NO", "Name", "MRN", "Department", "Course Notes", "Attended?", "Attendance Date"])
