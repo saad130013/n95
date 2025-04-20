@@ -13,7 +13,9 @@ EXCEL_PATH = "rcrn_course_data.xlsx"
 @st.cache_data
 def load_data():
     if os.path.exists(EXCEL_PATH):
-        return pd.read_excel(EXCEL_PATH)
+        df = pd.read_excel(EXCEL_PATH)
+        df.columns = df.columns.str.strip()  # إزالة أي مسافات في الأعمدة
+        return df
     else:
         return pd.DataFrame(columns=["NO", "Name", "MRN", "Department", "Course Notes", "Attended?", "Attendance Date"])
 
@@ -26,7 +28,7 @@ search_mrn = st.sidebar.text_input("🔢 رقم السجل الطبي MRN")
 
 results = df
 if search_name:
-    results = results[df["Name"].str.contains(search_name, case=False, na=False)]
+    results = results[df["Name"].astype(str).str.contains(search_name, case=False, na=False)]
 if search_mrn:
     results = results[df["MRN"].astype(str).str.contains(search_mrn)]
 
@@ -35,22 +37,24 @@ st.dataframe(results)
 
 # تحديث حالة الحضور
 st.subheader("✅ تحديث حالة الدورة")
-selected_name = st.selectbox("اختر اسم الموظف", df["Name"].dropna().unique())
-selected_row = df[df["Name"] == selected_name].iloc[0]
+if not df.empty and "Name" in df.columns:
+    selected_name = st.selectbox("اختر اسم الموظف", df["Name"].dropna().unique())
+    selected_row = df[df["Name"] == selected_name].iloc[0]
 
-col1, col2 = st.columns(2)
-with col1:
-    attended = st.selectbox("هل حضر الدورة؟", ["نعم", "لا"], index=0 if selected_row.get("Attended?") == "نعم" else 1)
-with col2:
-    attendance_date = st.date_input("تاريخ الحضور", value=datetime.today())
+    col1, col2 = st.columns(2)
+    with col1:
+        attended = st.selectbox("هل حضر الدورة؟", ["نعم", "لا"], index=0 if selected_row.get("Attended?") == "نعم" else 1)
+    with col2:
+        attendance_date = st.date_input("تاريخ الحضور", value=datetime.today())
 
-if st.button("💾 حفظ التحديث"):
-    df.loc[df["Name"] == selected_name, "Attended?"] = attended
-    df.loc[df["Name"] == selected_name, "Attendance Date"] = attendance_date
-    df.to_excel(EXCEL_PATH, index=False)
-    st.success("✅ تم حفظ التحديث بنجاح")
+    if st.button("💾 حفظ التحديث"):
+        df.loc[df["Name"] == selected_name, "Attended?"] = attended
+        df.loc[df["Name"] == selected_name, "Attendance Date"] = attendance_date
+        df.to_excel(EXCEL_PATH, index=False)
+        st.success("✅ تم حفظ التحديث بنجاح")
 
 # عرض قائمة غير الحاضرين
 st.subheader("❗الموظفون الذين لم يحضروا الدورة بعد")
-missing = df[df["Attended?"] != "نعم"]
-st.dataframe(missing)
+if "Attended?" in df.columns:
+    missing = df[df["Attended?"] != "نعم"]
+    st.dataframe(missing)
